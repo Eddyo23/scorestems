@@ -2013,6 +2013,8 @@ a:hover {
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  isolation: isolate;
+  z-index: 0;
 }
 
 .button-52:after {
@@ -2026,6 +2028,7 @@ a:hover {
   transition: 0.2s;
   width: 100%;
   z-index: -1;
+  pointer-events: none;
 }
 
 .button-52:before {
@@ -2039,6 +2042,7 @@ a:hover {
   transition: 0.2s;
   width: 100%;
   z-index: -2;
+  pointer-events: none;
 }
 
 .button-52:hover:after,
@@ -3266,8 +3270,37 @@ body.noscroll {
   width: 100% !important;
 }
 @media (max-width: 767px) {
+  #projects1 .project-video-categories .button-52 {
+    font-size: 16px;
+    min-width: 132px;
+    padding: 14px 20px;
+  }
+  #projects1 .project-video-categories .button-52:after {
+    left: 4px;
+    top: 4px;
+  }
+  #projects1 .project-video-categories .button-52:before {
+    left: 8px;
+    top: 8px;
+  }
   .score-pack-includes ul {
     grid-template-columns: repeat(2, 1fr);
+  }
+  #scorePacks1 .project .over-area {
+    padding: 7% 5%;
+  }
+  #scorePacks1 .score-pack-player {
+    height: 44px;
+    width: 100%;
+  }
+  #scorePacks1 .score-pack-playlist {
+    max-width: 100%;
+  }
+  #scorePacks1 .score-pack-track-button {
+    flex: 0 0 40px;
+    height: 40px;
+    line-height: 34px;
+    width: 40px;
   }
   .cart-card {
     padding: 24px 18px;
@@ -3299,6 +3332,28 @@ body.noscroll {
   #projects1 .client-reveal-content {
     padding-left: 18px;
     padding-right: 18px;
+  }
+  #projects1 .client-logo-grid .logo {
+    margin: 0 auto 14px;
+    position: relative;
+    width: 100%;
+  }
+  #projects1 .client-logo-grid .logo a {
+    height: 82px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  #projects1 .client-logo-grid .logo img,
+  #projects1 .client-logo-grid .logo img:first-child {
+    height: auto;
+    left: auto;
+    margin: 0 auto;
+    max-height: 58px;
+    max-width: 150px;
+    position: static;
+    top: auto;
+    transform: none;
+    width: auto;
   }
   #projects1 .film-reveal-content {
     padding-left: 18px;
@@ -3844,6 +3899,9 @@ body.noscroll {
   max-width: 85%;
   object-fit: contain;
   width: auto;
+}
+#projects1 .client-logo-grid .logo img:first-child:hover {
+  opacity: 1;
 }
 
 .section-clients-2 .nav-text {

@@ -97,7 +97,7 @@
               <div class="content">
                 <h4>Documentary</h4>
                 <p class="score-pack-price">$40</p>
-                <audio class="score-pack-player" controls data-collection="documentary" data-track-count="7" aria-label="Documentary score pack preview"></audio>
+                <audio class="score-pack-player" controls preload="metadata" data-collection="documentary" data-track-count="7" aria-label="Documentary score pack preview"></audio>
                 <button class="score-pack-purchase" type="button" data-product="Documentary">Add to Cart</button>
               </div>
             </div>
@@ -110,7 +110,7 @@
               <div class="content">
                 <h4>Thriller</h4>
                 <p class="score-pack-price">$40</p>
-                <audio class="score-pack-player" controls data-collection="thriller" data-track-count="7" aria-label="Thriller score pack preview"></audio>
+                <audio class="score-pack-player" controls preload="metadata" data-collection="thriller" data-track-count="7" aria-label="Thriller score pack preview"></audio>
                 <button class="score-pack-purchase" type="button" data-product="Thriller">Add to Cart</button>
               </div>
             </div>
@@ -138,7 +138,7 @@
               <div class="content">
                 <h4>Moody Cue</h4>
                 <p class="score-pack-price">$40</p>
-                <audio class="score-pack-player" controls data-collection="moody" data-track-count="7" aria-label="Moody Cue score pack preview"></audio>
+                <audio class="score-pack-player" controls preload="metadata" data-collection="moody" data-track-count="7" aria-label="Moody Cue score pack preview"></audio>
                 <button class="score-pack-purchase" type="button" data-product="Moody Cue">Add to Cart</button>
               </div>
             </div>
@@ -151,7 +151,7 @@
               <div class="content">
                 <h4>Orchestral</h4>
                 <p class="score-pack-price">$40</p>
-                <audio class="score-pack-player" controls data-collection="orchestral" data-track-count="7" aria-label="Orchestral score pack preview"></audio>
+                <audio class="score-pack-player" controls preload="metadata" data-collection="orchestral" data-track-count="7" aria-label="Orchestral score pack preview"></audio>
                 <button class="score-pack-purchase" type="button" data-product="Orchestral">Add to Cart</button>
               </div>
             </div>
@@ -164,7 +164,7 @@
               <div class="content">
                 <h4>Sophisticated</h4>
                 <p class="score-pack-price">$40</p>
-                <audio class="score-pack-player" controls data-collection="sophisticated" data-track-count="7" aria-label="Sophisticated score pack preview"></audio>
+                <audio class="score-pack-player" controls preload="metadata" data-collection="sophisticated" data-track-count="7" aria-label="Sophisticated score pack preview"></audio>
                 <button class="score-pack-purchase" type="button" data-product="Sophisticated">Add to Cart</button>
               </div>
             </div>
@@ -348,7 +348,12 @@
           audio.src = source;
           audio.load();
           if (autoplay) {
-            audio.play();
+            var playAttempt = audio.play();
+            if (playAttempt && typeof playAttempt.catch === 'function') {
+              playAttempt.catch(function () {
+                // Mobile browsers may block automatic playback after a track ends.
+              });
+            }
           }
         }
 

@@ -257,7 +257,7 @@ function serveDownload(requestUrl, response) {
   fs.createReadStream(file).pipe(response);
 }
 
-function serveStatic(requestUrl, response) {
+function serveStatic(request, requestUrl, response) {
   const requestedPath = requestUrl.pathname === "/" ? "/index.html" : requestUrl.pathname;
   const decodedPath = decodeURIComponent(requestedPath);
   const file = path.resolve(root, `.${decodedPath}`);
@@ -271,13 +271,65 @@ function serveStatic(requestUrl, response) {
     return;
   }
   const extension = path.extname(file).toLowerCase();
+  const fileSize = fs.statSync(file).size;
   const headers = {
+    "Accept-Ranges": "bytes",
+    "Content-Length": fileSize,
     "Content-Type": mimeTypes[extension] || "application/octet-stream"
   };
   if (longLivedAssetExtensions.has(extension)) {
     headers["Cache-Control"] = "public, max-age=31536000, immutable";
   }
+
+  const range = request.headers.range;
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (!match || (!match[1] && !match[2])) {
+      response.writeHead(416, { "Content-Range": `bytes */${fileSize}` });
+      response.end();
+      return;
+    }
+
+    let start;
+    let end;
+    if (!match[1]) {
+      const suffixLength = Number(match[2]);
+      start = Math.max(fileSize - suffixLength, 0);
+      end = fileSize - 1;
+    } else {
+      start = Number(match[1]);
+      end = match[2] ? Number(match[2]) : fileSize - 1;
+    }
+
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      start < 0 ||
+      end < start ||
+      start >= fileSize
+    ) {
+      response.writeHead(416, { "Content-Range": `bytes */${fileSize}` });
+      response.end();
+      return;
+    }
+
+    end = Math.min(end, fileSize - 1);
+    headers["Content-Length"] = end - start + 1;
+    headers["Content-Range"] = `bytes ${start}-${end}/${fileSize}`;
+    response.writeHead(206, headers);
+    if (request.method === "HEAD") {
+      response.end();
+      return;
+    }
+    fs.createReadStream(file, { start, end }).pipe(response);
+    return;
+  }
+
   response.writeHead(200, headers);
+  if (request.method === "HEAD") {
+    response.end();
+    return;
+  }
   fs.createReadStream(file).pipe(response);
 }
 
@@ -318,7 +370,7 @@ const server = http.createServer(async (request, response) => {
       return serveDownload(requestUrl, response);
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      return serveStatic(requestUrl, response);
+      return serveStatic(request, requestUrl, response);
     }
     sendJson(response, 404, { error: "Not found." });
   } catch (error) {
