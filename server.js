@@ -32,9 +32,22 @@ const mimeTypes = {
   ".ttf": "font/ttf",
   ".wav": "audio/wav",
   ".webm": "video/webm",
+  ".webp": "image/webp",
   ".woff": "font/woff",
   ".woff2": "font/woff2"
 };
+
+const longLivedAssetExtensions = new Set([
+  ".css",
+  ".gif",
+  ".ico",
+  ".jpeg",
+  ".jpg",
+  ".js",
+  ".png",
+  ".svg",
+  ".webp"
+]);
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -257,9 +270,14 @@ function serveStatic(requestUrl, response) {
     response.end("Not found.");
     return;
   }
-  response.writeHead(200, {
-    "Content-Type": mimeTypes[path.extname(file).toLowerCase()] || "application/octet-stream"
-  });
+  const extension = path.extname(file).toLowerCase();
+  const headers = {
+    "Content-Type": mimeTypes[extension] || "application/octet-stream"
+  };
+  if (longLivedAssetExtensions.has(extension)) {
+    headers["Cache-Control"] = "public, max-age=31536000, immutable";
+  }
+  response.writeHead(200, headers);
   fs.createReadStream(file).pipe(response);
 }
 
