@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { Resend } = require("resend");
 
 const root = __dirname;
 const port = Number(process.env.PORT || 3000);
@@ -197,25 +198,18 @@ async function sendDownloadEmail(email, items) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     throw new Error("Email delivery is not configured.");
   }
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const links = items
     .map(item => `<li><a href="${signedDownloadUrl(item.slug)}">${item.name} Sound Pack</a></li>`)
     .join("");
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM,
-      to: [email],
-      subject: "Your ScoreStems downloads",
-      html: `<p>Thank you for your purchase.</p><p>Your download links expire in seven days:</p><ul>${links}</ul>`
-    })
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM,
+    to: [email],
+    subject: "Your ScoreStems downloads",
+    html: `<p>Thank you for your purchase.</p><p>Your download links expire in seven days:</p><ul>${links}</ul>`
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Unable to send the download email.");
+  if (error) {
+    throw new Error(error.message || "Unable to send the download email.");
   }
 }
 

@@ -1,5 +1,6 @@
 .DS_Store
 .env
+node_modules/
 private-downloads/
 assets/Collection Zips/
 assets/Collection Audio/**/WAVs/
