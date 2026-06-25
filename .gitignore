@@ -1,0 +1,5 @@
+.DS_Store
+.env
+private-downloads/
+assets/Collection Zips/
+assets/Collection Audio/**/WAVs/
