@@ -298,6 +298,44 @@
         ]
       };
       var players = document.querySelectorAll('.score-pack-player');
+      var scorePackProjects = document.querySelectorAll('#scorePacks1 .project');
+
+      function mobileCardHoverEnabled() {
+        return window.matchMedia && window.matchMedia('(max-width: 992px)').matches;
+      }
+
+      function closeScorePackCards(exceptProject) {
+        Array.prototype.forEach.call(scorePackProjects, function (project) {
+          if (project !== exceptProject) {
+            project.classList.remove('is-open');
+          }
+        });
+      }
+
+      Array.prototype.forEach.call(scorePackProjects, function (project) {
+        project.addEventListener('click', function (event) {
+          if (!mobileCardHoverEnabled() || project.classList.contains('is-open')) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          closeScorePackCards(project);
+          project.classList.add('is-open');
+        }, true);
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!mobileCardHoverEnabled() || event.target.closest('#scorePacks1 .project')) {
+          return;
+        }
+        closeScorePackCards();
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          closeScorePackCards();
+        }
+      });
 
       Array.prototype.forEach.call(players, function (audio) {
         var tracks = collections[audio.getAttribute('data-collection')] || [];
