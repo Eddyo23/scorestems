@@ -3929,6 +3929,50 @@ body.noscroll {
 #projects1 .client-logo-grid .logo img:first-child:hover {
   opacity: 1;
 }
+#projects1 .festival-name-card {
+  align-items: center;
+  color: #f2d48c;
+  display: flex;
+  flex-direction: column;
+  font-family: "Droid Serif", Georgia, serif;
+  justify-content: center;
+  line-height: 1.25;
+  margin: 0 auto 30px;
+  max-width: 250px;
+  padding: 12px 18px;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  background: #171717;
+  border: 2px solid #c09b3a;
+}
+#projects1 .festival-name-card span {
+  font-size: 1.05em;
+}
+#projects1 .festival-name-card strong {
+  color: #ffffff;
+  font-size: 0.74em;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+#projects1 .festival-award-feature {
+  margin: 28px auto 6px;
+  max-width: 460px;
+  text-align: center;
+}
+#projects1 .festival-award-feature img {
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
+  display: block;
+  height: auto;
+  width: 100%;
+}
+#projects1 .festival-award-feature figcaption {
+  color: #555555;
+  font-size: 0.92em;
+  line-height: 1.5;
+  margin-top: 12px;
+}
 
 .section-clients-2 .nav-text {
   margin: 0 auto;
