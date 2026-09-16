@@ -19,3 +19,7 @@
 @media(min-width:1400px){#ss-archive .opening{height:500px}}@media(max-width:760px){.site-header,#ss-archive .site-header,#ss-about .site-header,#ss-services .site-header{flex-direction:column;align-items:flex-start;padding:24px}.site-header nav,#ss-archive .site-header nav,#ss-about .site-header nav,#ss-services .site-header nav{gap:18px 22px;line-height:2}.sound-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:35px 20px;padding:0 22px 40px}#ss-archive .opening{height:300px}#ss-about .portrait img{height:330px}.score-pack-cart{margin:0 20px 40px;padding:24px}.cart-payment{min-width:0;width:100%;flex-basis:100%}.cart-footer{align-items:stretch}}
 @media(max-width:450px){.sound-grid{grid-template-columns:1fr;max-width:360px}.email{font-size:21px}.page-intro h1{font-size:29px}.site-footer{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Keep complete sound-pack artwork inside a quiet frame. */
+#ss-archive .pack-grid img,.sound-pack>img{width:100%;height:auto;aspect-ratio:auto;object-fit:contain;border:1px solid #e0dfd7;padding:8px;background:#f8f7f3;display:block}
+.imdb-profile{margin-top:20px}.imdb-profile a{font:13px "Work Sans",sans-serif}

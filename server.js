@@ -339,6 +339,9 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "GET" && requestUrl.pathname === "/api/health") {
       return sendJson(response, 200, { ok: true });
     }
+    if (requestUrl.pathname.startsWith("/api/paypal/")) {
+      return sendJson(response, 410, { error: "Sound packs are now free. Visit /score-packs.html." });
+    }
     if (request.method === "GET" && requestUrl.pathname === "/api/paypal/config") {
       return sendJson(response, 200, {
         clientId: process.env.PAYPAL_CLIENT_ID || "",
