@@ -2,11 +2,11 @@ const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
-const { Resend } = require("resend");
 
+const driveLinks = require("./pack-links.json");
 const root = __dirname;
 const port = Number(process.env.PORT || 3000);
-const privateDownloads = path.join(root, "private-downloads");
+const privateDownloads = process.env.PRIVATE_DOWNLOADS_DIR || path.join(root, "private-downloads");
 const products = {
   Documentary: { price: "40.00", slug: "documentary" },
   Thriller: { price: "40.00", slug: "thriller" },
@@ -75,128 +75,6 @@ function readJson(request) {
   });
 }
 
-function paypalBaseUrl() {
-  return process.env.PAYPAL_ENV === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
-}
-
-async function paypalAccessToken() {
-  const credentials = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
-  ).toString("base64");
-  const response = await fetch(`${paypalBaseUrl()}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error_description || "Unable to authenticate with PayPal.");
-  }
-  return data.access_token;
-}
-
-function normalizeCart(items) {
-  if (!Array.isArray(items)) {
-    throw new Error("Cart items are required.");
-  }
-  const normalized = items.map(item => {
-    const product = products[item.name];
-    const quantity = Number(item.quantity);
-    if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
-      throw new Error("The cart contains an invalid item.");
-    }
-    return { name: item.name, quantity, ...product };
-  });
-  if (!normalized.length) {
-    throw new Error("The cart is empty.");
-  }
-  return normalized;
-}
-
-function orderAmount(items) {
-  return items
-    .reduce((total, item) => total + Number(item.price) * item.quantity, 0)
-    .toFixed(2);
-}
-
-async function createPaypalOrder(items) {
-  const token = await paypalAccessToken();
-  const response = await fetch(`${paypalBaseUrl()}/v2/checkout/orders`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "PayPal-Request-Id": crypto.randomUUID(),
-      Prefer: "return=representation"
-    },
-    body: JSON.stringify({
-      intent: "CAPTURE",
-      purchase_units: [{
-        amount: {
-          currency_code: "USD",
-          value: orderAmount(items),
-          breakdown: {
-            item_total: {
-              currency_code: "USD",
-              value: orderAmount(items)
-            }
-          }
-        },
-        items: items.map(item => ({
-          name: `${item.name} Sound Pack`,
-          quantity: String(item.quantity),
-          unit_amount: {
-            currency_code: "USD",
-            value: item.price
-          },
-          category: "DIGITAL_GOODS"
-        }))
-      }]
-    })
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Unable to create the PayPal order.");
-  }
-  return data;
-}
-
-async function capturePaypalOrder(orderId) {
-  const token = await paypalAccessToken();
-  const response = await fetch(
-    `${paypalBaseUrl()}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "PayPal-Request-Id": `capture-${orderId}`,
-        Prefer: "return=representation"
-      }
-    }
-  );
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Unable to capture the PayPal order.");
-  }
-  return data;
-}
-
-function purchasedItems(capture) {
-  const paypalItems = capture.purchase_units?.[0]?.items || [];
-  return normalizeCart(
-    paypalItems.map(item => ({
-      name: item.name.replace(/ Sound Pack$/, ""),
-      quantity: Number(item.quantity)
-    }))
-  );
-}
-
 function signedDownloadUrl(slug) {
   const expires = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
   const signature = crypto
@@ -207,27 +85,33 @@ function signedDownloadUrl(slug) {
   return `${base}/downloads/${slug}?expires=${expires}&signature=${signature}`;
 }
 
-async function sendDownloadEmail(email, items) {
+async function sendDownloadEmail(email, items, idempotencyKey) {
   if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
     throw new Error("Email delivery is not configured.");
   }
-  const resend = new Resend(process.env.RESEND_API_KEY);
+
   const links = items
-    .map(item => `<li><a href="${signedDownloadUrl(item.slug)}">${item.name} Sound Pack</a></li>`)
+    .map(item => `<li><a href="${driveLinks[item.slug]}">${item.name} Sound Pack</a></li>`)
     .join("");
-  const { error } = await resend.emails.send({
+  const result = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    signal: AbortSignal.timeout(15000),
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}) },
+    body: JSON.stringify({
     from: process.env.EMAIL_FROM,
     to: [email],
     subject: "Your ScoreStems downloads",
-    html: `<p>Thank you for your purchase.</p><p>Your download links expire in seven days:</p><ul>${links}</ul>`
+    html: `<p>Here is your free ScoreStems sound pack. No payment is required.</p><p>Open your pack in Google Drive and choose Download:</p><ul>${links}</ul>`
+    })
   });
-  if (error) {
-    throw new Error(error.message || "Unable to send the download email.");
-  }
+  if (!result.ok) throw new Error("Email service unavailable. Please try again later.");
 }
 
 function serveDownload(requestUrl, response) {
   const slug = requestUrl.pathname.split("/").pop();
+  if (!process.env.DOWNLOAD_SECRET || !Object.values(products).some(p => p.slug === slug)) {
+    response.writeHead(404); response.end("Not found."); return;
+  }
   const expires = Number(requestUrl.searchParams.get("expires"));
   const signature = requestUrl.searchParams.get("signature") || "";
   const expected = crypto
@@ -235,7 +119,7 @@ function serveDownload(requestUrl, response) {
     .update(`${slug}:${expires}`)
     .digest("hex");
   const validSignature =
-    signature.length === expected.length &&
+    /^[a-f0-9]{64}$/.test(signature) &&
     crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 
   if (!expires || expires < Math.floor(Date.now() / 1000) || !validSignature) {
@@ -262,7 +146,9 @@ function serveStatic(request, requestUrl, response) {
   const decodedPath = decodeURIComponent(requestedPath);
   const file = path.resolve(root, `.${decodedPath}`);
   const blocked =
-    !file.startsWith(root) ||
+    !file.startsWith(root + path.sep) ||
+    decodedPath.split("/").some(part => part.startsWith(".")) ||
+    !(decodedPath.startsWith("/assets/") || /^\/[a-z-]+\.html$/.test(decodedPath)) ||
     file.startsWith(privateDownloads) ||
     [".env", ".gitignore", "package.json", "render.yaml", "server.js"].includes(path.basename(file));
   if (blocked || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
@@ -278,7 +164,7 @@ function serveStatic(request, requestUrl, response) {
     "Content-Type": mimeTypes[extension] || "application/octet-stream"
   };
   if (longLivedAssetExtensions.has(extension)) {
-    headers["Cache-Control"] = "public, max-age=31536000, immutable";
+    headers["Cache-Control"] = [".js", ".css"].includes(extension) ? "no-cache" : "public, max-age=86400";
   }
 
   const range = request.headers.range;
@@ -333,41 +219,92 @@ function serveStatic(request, requestUrl, response) {
   fs.createReadStream(file).pipe(response);
 }
 
+
+// Single-process abuse limits. Shared storage is required before scaling replicas.
+const attempts = new Map();
+function consumeLimit(key, max, duration) {
+  const now = Date.now();
+  for (const [k,v] of attempts) if (v.until <= now) attempts.delete(k);
+  const entry = attempts.get(key) || { count: 0, until: now + duration };
+  if (entry.count >= max) return false;
+  entry.count++; attempts.set(key, entry); return true;
+}
+async function requestDownload(request, response) {
+  if (!String(request.headers['content-type']).startsWith('application/json'))
+    return sendJson(response, 415, { error: 'Please use the download form.' });
+  const body = await readJson(request);
+  const item = Object.entries(products).find(([,p]) => p.slug === body.pack);
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  if (!item || email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))
+    return sendJson(response, 400, { error: 'Choose an available pack and enter a valid email address.' });
+  if (body.website) return sendJson(response, 400, { error: 'Unable to submit this request.' });
+  let base;
+  try { base = new URL(process.env.PUBLIC_BASE_URL); } catch (_) {}
+  if (!base || base.protocol !== 'https:' || !process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
+    return sendJson(response, 503, { error: 'Email downloads are being prepared. Please check back soon.' });
+  if (request.headers.origin && request.headers.origin !== base.origin)
+    return sendJson(response, 403, { error: 'Please submit the form on the ScoreStems website.' });
+  const emailHash = crypto.createHash('sha256').update(email).digest('hex');
+  if (!consumeLimit('email:' + emailHash, 3, 3600000) || !consumeLimit('global', 90, 86400000))
+    return sendJson(response, 429, { error: 'The download email limit has been reached. Please try again later.' });
+  try {
+    await sendDownloadEmail(email, [{ name: item[0], slug: body.pack }]);
+  } catch (_) {
+    return sendJson(response, 502, { error: 'The email could not be sent. Please try again later.' });
+  }
+  return sendJson(response, 200, { ok: true });
+}
+
+
+async function stripeWebhook(request, response) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return sendJson(response, 503, { error: 'Webhook not configured.' });
+  const chunks = []; let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > 1000000) return sendJson(response, 413, { error: 'Payload too large.' });
+    chunks.push(Buffer.from(chunk));
+  }
+  const raw = Buffer.concat(chunks);
+  const parts = String(request.headers['stripe-signature'] || '').split(',');
+  const timestamp = parts.find(p => p.startsWith('t='))?.slice(2);
+  const expected = crypto.createHmac('sha256', secret).update(timestamp + '.').update(raw).digest('hex');
+  const valid = parts.filter(p => p.startsWith('v1=')).some(p => {
+    const value = p.slice(3);
+    return /^[a-f0-9]{64}$/.test(value) && crypto.timingSafeEqual(Buffer.from(value), Buffer.from(expected));
+  });
+  if (!timestamp || !Number.isFinite(Number(timestamp)) || Math.abs(Date.now()/1000 - Number(timestamp)) > 300 || !valid)
+    return sendJson(response, 400, { error: 'Invalid signature.' });
+  const event = JSON.parse(raw.toString('utf8'));
+  if (!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type))
+    return sendJson(response, 200, { received: true });
+  const session = event.data.object;
+  const slug = session.client_reference_id;
+  const item = Object.entries(products).find(([,p]) => p.slug === slug);
+  if (!item || session.payment_status !== 'paid' || !session.livemode)
+    return sendJson(response, 200, { received: true });
+  const email = session.customer_details?.email;
+  if (!email || !session.id) return sendJson(response, 400, { error: 'Missing checkout details.' });
+  try {
+    await sendDownloadEmail(email, [{ name: item[0], slug }], 'scorestems-' + session.id);
+  } catch (_) {
+    return sendJson(response, 502, { error: 'Email delivery failed. Retry event.' });
+  }
+  return sendJson(response, 200, { received: true });
+}
+
 const server = http.createServer(async (request, response) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`);
   try {
+    if (request.method === "POST" && requestUrl.pathname === "/api/stripe/webhook") return await stripeWebhook(request, response);
+    if (request.method === "POST" && requestUrl.pathname === "/api/downloads/request") {
+      return await requestDownload(request, response);
+    }
     if (request.method === "GET" && requestUrl.pathname === "/api/health") {
       return sendJson(response, 200, { ok: true });
     }
     if (requestUrl.pathname.startsWith("/api/paypal/")) {
       return sendJson(response, 410, { error: "Sound packs are now free. Visit /score-packs.html." });
-    }
-    if (request.method === "GET" && requestUrl.pathname === "/api/paypal/config") {
-      return sendJson(response, 200, {
-        clientId: process.env.PAYPAL_CLIENT_ID || "",
-        currency: "USD"
-      });
-    }
-    if (request.method === "POST" && requestUrl.pathname === "/api/paypal/orders") {
-      const body = await readJson(request);
-      const order = await createPaypalOrder(normalizeCart(body.items));
-      return sendJson(response, 200, { id: order.id });
-    }
-    if (
-      request.method === "POST" &&
-      /^\/api\/paypal\/orders\/[^/]+\/capture$/.test(requestUrl.pathname)
-    ) {
-      const orderId = requestUrl.pathname.split("/")[4];
-      const capture = await capturePaypalOrder(orderId);
-      if (capture.status !== "COMPLETED") {
-        throw new Error("PayPal did not complete the payment.");
-      }
-      const email = capture.payer?.email_address;
-      if (!email) {
-        throw new Error("PayPal did not return a customer email address.");
-      }
-      await sendDownloadEmail(email, purchasedItems(capture));
-      return sendJson(response, 200, { status: capture.status, email });
     }
     if (request.method === "GET" && requestUrl.pathname.startsWith("/downloads/")) {
       return serveDownload(requestUrl, response);
@@ -377,11 +314,13 @@ const server = http.createServer(async (request, response) => {
     }
     sendJson(response, 404, { error: "Not found." });
   } catch (error) {
-    console.error(error);
+    console.error("Request failed.");
     sendJson(response, 400, { error: error.message || "Request failed." });
   }
 });
 
-server.listen(port, () => {
+if (require.main === module) server.listen(port, () => {
   console.log(`ScoreStems is running on port ${port}`);
 });
+
+module.exports = { server };
