@@ -1,11 +1,2 @@
-// Public embed information only. Never put API keys or ZIP URLs here.
-window.SCORESTEMS_DOWNLOADS = {
-  stripePaymentLink: '', // Stripe: customer chooses price, USD, no preset suggested amount.
-  forms: {
-    documentary: { uid: '', scriptUrl: '' },
-    thriller: { uid: '', scriptUrl: '' },
-    'moody-cue': { uid: '', scriptUrl: '' },
-    orchestral: { uid: '', scriptUrl: '' },
-    sophisticated: { uid: '', scriptUrl: '' }
-  }
-};
+// Enable after Stripe webhook and email delivery are verified.
+window.SCORESTEMS_DOWNLOADS = { stripePaymentLink: 'https://buy.stripe.com/00w8wR3WK63M20ueKR67S00', contributionsEnabled: false };
