@@ -23,3 +23,7 @@
 /* Keep complete sound-pack artwork inside a quiet frame. */
 #ss-archive .pack-grid img,.sound-pack>img{width:100%;height:auto;aspect-ratio:auto;object-fit:contain;border:1px solid #e0dfd7;padding:8px;background:#f8f7f3;display:block}
 .imdb-profile{margin-top:20px}.imdb-profile a{font:13px "Work Sans",sans-serif}
+
+
+/* Linked sound-pack artwork and anchored player navigation. */
+.pack-artwork{display:block}.pack-artwork img{display:block;width:100%;aspect-ratio:1;object-fit:contain}.pack-artwork:focus-visible{outline:2px solid #526048;outline-offset:5px}.sound-pack{scroll-margin-top:24px}
