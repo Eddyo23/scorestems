@@ -11,7 +11,7 @@ Deploy server.js, pack-links.json, the changed HTML files and assets. Preserve e
 Live Stripe Payment Link created: https://buy.stripe.com/00w8wR3WK63M20ueKR67S00
 Suggested $15 USD; customer can change amount. The website appends client_reference_id with the selected pack slug.
 
-Configure a Stripe event destination at https://scorestems.com/api/stripe/webhook for checkout.session.completed and checkout.session.async_payment_succeeded. Save its signing secret as STRIPE_WEBHOOK_SECRET in Render. The server verifies the signature, requires a paid live checkout, and emails the selected Drive URL to the checkout email address. Resend's session-based idempotency key suppresses duplicates within its 24-hour window; manual replays later can resend a download email.
+Configure a Stripe event destination at https://www.scorestems.com/api/stripe/webhook for checkout.session.completed and checkout.session.async_payment_succeeded. Save its signing secret as STRIPE_WEBHOOK_SECRET in Render. The server verifies the signature, requires a paid live checkout, and emails the selected Drive URL to the checkout email address. Resend's session-based idempotency key suppresses duplicates within its 24-hour window; manual replays later can resend a download email.
 
 Only set contributionsEnabled to true in assets/js/download-config.js once the webhook and live email delivery have been verified. Until then, the free download form remains available.
 
@@ -20,3 +20,7 @@ Only set contributionsEnabled to true in assets/js/download-config.js once the w
 npm test covers free email delivery, invalid input, origin checks, email failures, rate limits, private files, legacy signed-link rejection, and paid Stripe webhook validation. Tests mock Resend and do not send real email. Verify a real email with an owner-approved recipient before launch.
 
 Free-path limits: 3 requests per recipient per hour and 90 total per rolling 24 hours. Counters are process-local and reset on restart. Paid checkout email failures return an error so Stripe can retry. No persistent disk has been purchased as part of this setup.
+
+## Live verification — 2026-09-20
+
+Live webhook destination we_1UHrpxRx6nk19pNiKNjZw6Eu is active at https://www.scorestems.com/api/stripe/webhook. Its signing secret is stored only in Render. PUBLIC_BASE_URL uses https://www.scorestems.com to match the canonical redirect. A signed no-op webhook returned 200 without redirect, and the live Documentary form successfully submitted its download email to the owner-approved address. No real payment was charged. Contributions are enabled following these checks.
