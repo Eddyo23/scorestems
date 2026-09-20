@@ -281,7 +281,7 @@ async function stripeWebhook(request, response) {
   const session = event.data.object;
   const slug = session.client_reference_id;
   const item = Object.entries(products).find(([,p]) => p.slug === slug);
-  if (!item || session.payment_status !== 'paid' || !session.livemode)
+  if (!item || session.payment_status !== 'paid' || !session.livemode || session.payment_link !== 'plink_1UH5ocRx6nk19pNizhTsl3P7')
     return sendJson(response, 200, { received: true });
   const email = session.customer_details?.email;
   if (!email || !session.id) return sendJson(response, 400, { error: 'Missing checkout details.' });
